@@ -1,3 +1,10 @@
 {
-  "cSpell.words": ["goravel"]
+  "cSpell.words": [
+    "goravel",
+    "sess"
+  ],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "golang.go",
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 15000
 }

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"myapp/handlers"
+
 	"github.com/namnguyen191/goravel"
 )
 
 type application struct {
-	App *goravel.Goravel
+	App      *goravel.Goravel
+	Handlers *handlers.Handlers
 }
 
 func main() {
