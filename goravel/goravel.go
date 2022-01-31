@@ -28,6 +28,7 @@ type Goravel struct {
 	Routes   *chi.Mux
 	Render   *render.Render
 	Session  *scs.SessionManager
+	DB       Database
 	JetViews *jet.Set
 	config   config
 }
@@ -39,6 +40,7 @@ type config struct {
 	renderer    string
 	cookie      cookieConfig
 	sessionType string
+	database    databaseConfig
 }
 
 func (grv *Goravel) New(rootPath string) error {
@@ -64,6 +66,20 @@ func (grv *Goravel) New(rootPath string) error {
 		return err
 	}
 
+	// connect to db
+	if os.Getenv("DATABASE_TYPE") != "" {
+		db, err := grv.OpenDB(os.Getenv("DATABASE_TYPE"), grv.BuildDSN())
+		if err != nil {
+			grv.ErrorLog.Println(err)
+			os.Exit(1)
+		}
+
+		grv.DB = Database{
+			DataBaseType: os.Getenv("DATABASE_TYPE"),
+			Pool:         db,
+		}
+	}
+
 	// create logger
 	infoLog, errorLog := grv.startLoggers()
 	grv.InfoLog = infoLog
@@ -86,6 +102,10 @@ func (grv *Goravel) New(rootPath string) error {
 			domain:   os.Getenv("COOKIE_DOMAIN"),
 		},
 		sessionType: os.Getenv("SESSION_TYPE"),
+		database: databaseConfig{
+			database: os.Getenv("DATABASE_TYPE"),
+			dsn:      grv.BuildDSN(),
+		},
 	}
 
 	// create a Session
@@ -95,6 +115,7 @@ func (grv *Goravel) New(rootPath string) error {
 		CookieName:     grv.config.cookie.name,
 		SessionType:    grv.config.sessionType,
 		CookieDomain:   grv.config.cookie.domain,
+		DBPool:         grv.DB.Pool,
 	}
 
 	grv.Session = sess.InitSession()
@@ -136,6 +157,9 @@ func (grv *Goravel) ListenAndServe() {
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 600 * time.Second,
 	}
+
+	// close DB when app close
+	defer grv.DB.Pool.Close()
 
 	grv.InfoLog.Printf("Listening on port %s", os.Getenv("PORT"))
 	err := srv.ListenAndServe()
@@ -186,7 +210,30 @@ func (grv *Goravel) createRenderer() {
 		RootPath: grv.RootPath,
 		Port:     grv.config.port,
 		JetViews: grv.JetViews,
+		Session:  grv.Session,
 	}
 
 	grv.Render = &myRenderer
+}
+
+func (grv *Goravel) BuildDSN() string {
+	var dsn string
+
+	switch os.Getenv("DATABASE_TYPE") {
+	case "postgres", "postgresql":
+		dsn = fmt.Sprintf("host=%s port=%s user=%s dbname=%s sslmode=%s timezone=UTC connect_timeout=5",
+			os.Getenv("DATABASE_HOST"),
+			os.Getenv("DATABASE_PORT"),
+			os.Getenv("DATABASE_USER"),
+			os.Getenv("DATABASE_NAME"),
+			os.Getenv("DATABASE_SSL_MODE"),
+		)
+
+		if os.Getenv("DATABASE_PASS") != "" {
+			dsn = fmt.Sprintf("%s password=%s", dsn, os.Getenv("DATABASE_PASS"))
+		}
+	default:
+	}
+
+	return dsn
 }

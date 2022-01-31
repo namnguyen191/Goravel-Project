@@ -1,6 +1,11 @@
 {
   "cSpell.words": [
+    "dbname",
+    "fatih",
     "goravel",
+    "jackc",
+    "pgconn",
+    "postgresstore",
     "sess"
   ],
   "editor.formatOnSave": true,

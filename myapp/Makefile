@@ -8,9 +8,9 @@ build:
 	@echo "Goravel built!""
 
 run: build
-	@echo Staring Celeritas...
+	@echo Staring Goravel...
 	@.\tmp\${BINARY_NAME} &
-	@echo Celeritas started!
+	@echo Goravel started!
 
 clean:
 	@echo Cleaning...

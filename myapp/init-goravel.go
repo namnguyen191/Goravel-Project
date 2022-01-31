@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	"myapp/data"
 	"myapp/handlers"
+	"myapp/middleware"
 	"os"
 
 	"github.com/namnguyen191/goravel"
@@ -24,6 +26,10 @@ func initApplication() *application {
 
 	grv.AppName = "myapp"
 
+	myMiddleware := &middleware.Middleware{
+		App: grv,
+	}
+
 	myHandlers := &handlers.Handlers{
 		App: grv,
 	}
@@ -31,11 +37,16 @@ func initApplication() *application {
 	grv.InfoLog.Println("Debug is set to", grv.Debug)
 
 	app := &application{
-		App:      grv,
-		Handlers: myHandlers,
+		App:        grv,
+		Handlers:   myHandlers,
+		Middleware: myMiddleware,
 	}
 
 	app.App.Routes = app.routes()
+
+	app.Models = data.New(app.App.DB.Pool)
+	myHandlers.Models = app.Models
+	app.Middleware.Models = app.Models
 
 	return app
 }
