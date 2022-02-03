@@ -20,6 +20,7 @@ require (
 	github.com/alexedwards/scs v1.4.1 // indirect
 	github.com/alexedwards/scs/mysqlstore v0.0.0-20211203064041-370cc303b69f // indirect
 	github.com/alexedwards/scs/postgresstore v0.0.0-20211203064041-370cc303b69f // indirect
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/gertd/go-pluralize v0.2.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.0 // indirect

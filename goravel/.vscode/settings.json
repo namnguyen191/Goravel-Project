@@ -1,8 +1,11 @@
 {
   "cSpell.words": [
+    "asaskevich",
     "dbname",
     "fatih",
+    "gertd",
     "goravel",
+    "govalidator",
     "jackc",
     "pgconn",
     "postgresstore",
