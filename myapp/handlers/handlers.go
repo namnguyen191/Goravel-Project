@@ -14,7 +14,7 @@ type Handlers struct {
 }
 
 func (h *Handlers) Home(rw http.ResponseWriter, r *http.Request) {
-	err := h.App.Render.Page(rw, r, "home", nil, nil)
+	err := h.render(rw, r, "home", nil, nil)
 
 	if err != nil {
 		h.App.ErrorLog.Println("error rendering: ", err)
