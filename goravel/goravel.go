@@ -11,7 +11,9 @@ import (
 	"github.com/CloudyKit/jet/v6"
 	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
+	"github.com/gomodule/redigo/redis"
 	"github.com/joho/godotenv"
+	"github.com/namnguyen191/goravel/cache"
 	"github.com/namnguyen191/goravel/render"
 	"github.com/namnguyen191/goravel/session"
 )
@@ -32,6 +34,7 @@ type Goravel struct {
 	JetViews      *jet.Set
 	config        config
 	EncryptionKey string
+	Cache         cache.Cache
 }
 
 type config struct {
@@ -42,6 +45,7 @@ type config struct {
 	cookie      cookieConfig
 	sessionType string
 	database    databaseConfig
+	redis       redisConfig
 }
 
 func (grv *Goravel) New(rootPath string) error {
@@ -81,6 +85,12 @@ func (grv *Goravel) New(rootPath string) error {
 		}
 	}
 
+	// create cache
+	if os.Getenv("CACHE") == "redis" {
+		myRedisCache := grv.createClientRedisCache()
+		grv.Cache = myRedisCache
+	}
+
 	// create logger
 	infoLog, errorLog := grv.startLoggers()
 	grv.InfoLog = infoLog
@@ -106,6 +116,11 @@ func (grv *Goravel) New(rootPath string) error {
 		database: databaseConfig{
 			database: os.Getenv("DATABASE_TYPE"),
 			dsn:      grv.BuildDSN(),
+		},
+		redis: redisConfig{
+			host:     os.Getenv("REDIS_HOST"),
+			password: os.Getenv("REDIS_PASSWORD"),
+			prefix:   os.Getenv("REDIS_PREFIX"),
 		},
 	}
 
@@ -216,6 +231,35 @@ func (grv *Goravel) createRenderer() {
 	}
 
 	grv.Render = &myRenderer
+}
+
+func (grv *Goravel) createClientRedisCache() *cache.RedisCache {
+	cacheClient := cache.RedisCache{
+		Conn:   grv.createRedisPool(),
+		Prefix: grv.config.redis.prefix,
+	}
+
+	return &cacheClient
+}
+
+func (grv *Goravel) createRedisPool() *redis.Pool {
+	return &redis.Pool{
+		MaxIdle:     50,
+		MaxActive:   10000,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial(
+				"tcp",
+				grv.config.redis.host,
+				redis.DialPassword(grv.config.redis.password),
+			)
+		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+
+			return err
+		},
+	}
 }
 
 func (grv *Goravel) BuildDSN() string {
