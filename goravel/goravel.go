@@ -20,6 +20,8 @@ import (
 
 const version = "1.0.0"
 
+var myRedisCache *cache.RedisCache
+
 type Goravel struct {
 	AppName       string
 	Debug         bool
@@ -86,8 +88,8 @@ func (grv *Goravel) New(rootPath string) error {
 	}
 
 	// create cache
-	if os.Getenv("CACHE") == "redis" {
-		myRedisCache := grv.createClientRedisCache()
+	if os.Getenv("CACHE") == "redis" || os.Getenv("SESSION_TYPE") == "redis" {
+		myRedisCache = grv.createClientRedisCache()
 		grv.Cache = myRedisCache
 	}
 
@@ -131,18 +133,37 @@ func (grv *Goravel) New(rootPath string) error {
 		CookieName:     grv.config.cookie.name,
 		SessionType:    grv.config.sessionType,
 		CookieDomain:   grv.config.cookie.domain,
-		DBPool:         grv.DB.Pool,
 	}
+
+	switch grv.config.sessionType {
+	case "redis":
+		{
+			sess.RedisPool = myRedisCache.Conn
+		}
+	case "mysql", "postgres", "mariadb", "postgresql":
+		{
+			sess.DBPool = grv.DB.Pool
+		}
+	}
+
 	grv.Session = sess.InitSession()
 
 	grv.EncryptionKey = os.Getenv("KEY")
 
-	var views = jet.NewSet(
-		jet.NewOSFileSystemLoader(fmt.Sprintf("%s/views", rootPath)),
-		jet.InDevelopmentMode(),
-	)
+	if grv.Debug {
+		var views = jet.NewSet(
+			jet.NewOSFileSystemLoader(fmt.Sprintf("%s/views", rootPath)),
+			jet.InDevelopmentMode(),
+		)
 
-	grv.JetViews = views
+		grv.JetViews = views
+	} else {
+		var views = jet.NewSet(
+			jet.NewOSFileSystemLoader(fmt.Sprintf("%s/views", rootPath)),
+		)
+
+		grv.JetViews = views
+	}
 
 	grv.createRenderer()
 

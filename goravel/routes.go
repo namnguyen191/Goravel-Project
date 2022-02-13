@@ -13,6 +13,7 @@ func (grv *Goravel) routes() http.Handler {
 	mux.Use(middleware.RealIP)
 	mux.Use(middleware.Recoverer)
 	mux.Use(grv.SessionLoad)
+	mux.Use(grv.NoSurf)
 
 	if grv.Debug {
 		mux.Use(middleware.Logger)
