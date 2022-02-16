@@ -10,17 +10,22 @@ import (
 
 	"github.com/CloudyKit/jet/v6"
 	"github.com/alexedwards/scs/v2"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/go-chi/chi/v5"
 	"github.com/gomodule/redigo/redis"
 	"github.com/joho/godotenv"
 	"github.com/namnguyen191/goravel/cache"
 	"github.com/namnguyen191/goravel/render"
 	"github.com/namnguyen191/goravel/session"
+	"github.com/robfig/cron/v3"
 )
 
 const version = "1.0.0"
 
 var myRedisCache *cache.RedisCache
+var myBadgerCache *cache.BadgerCache
+var redisPool *redis.Pool
+var badgerConn *badger.DB
 
 type Goravel struct {
 	AppName       string
@@ -37,6 +42,7 @@ type Goravel struct {
 	config        config
 	EncryptionKey string
 	Cache         cache.Cache
+	Scheduler     *cron.Cron
 }
 
 type config struct {
@@ -87,10 +93,26 @@ func (grv *Goravel) New(rootPath string) error {
 		}
 	}
 
+	scheduler := cron.New()
+	grv.Scheduler = scheduler
+
 	// create cache
 	if os.Getenv("CACHE") == "redis" || os.Getenv("SESSION_TYPE") == "redis" {
 		myRedisCache = grv.createClientRedisCache()
 		grv.Cache = myRedisCache
+		redisPool = myRedisCache.Conn
+	}
+	if os.Getenv("CACHE") == "badger" {
+		myBadgerCache = grv.createClientBadgerCache()
+		grv.Cache = myBadgerCache
+		badgerConn = myBadgerCache.Conn
+
+		_, err := grv.Scheduler.AddFunc("@daily", func() {
+			myBadgerCache.Conn.RunValueLogGC(0.7)
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	// create logger
@@ -197,7 +219,17 @@ func (grv *Goravel) ListenAndServe() {
 	}
 
 	// close DB when app close
-	defer grv.DB.Pool.Close()
+	if grv.DB.Pool != nil {
+		defer grv.DB.Pool.Close()
+	}
+
+	if redisPool != nil {
+		defer redisPool.Close()
+	}
+
+	if badgerConn != nil {
+		defer badgerConn.Close()
+	}
 
 	grv.InfoLog.Printf("Listening on port %s", os.Getenv("PORT"))
 	err := srv.ListenAndServe()
@@ -263,6 +295,15 @@ func (grv *Goravel) createClientRedisCache() *cache.RedisCache {
 	return &cacheClient
 }
 
+func (grv *Goravel) createClientBadgerCache() *cache.BadgerCache {
+	cacheClient := cache.BadgerCache{
+		Conn:   grv.createBadgerConn(),
+		Prefix: grv.config.redis.prefix,
+	}
+
+	return &cacheClient
+}
+
 func (grv *Goravel) createRedisPool() *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     50,
@@ -281,6 +322,15 @@ func (grv *Goravel) createRedisPool() *redis.Pool {
 			return err
 		},
 	}
+}
+
+func (grv *Goravel) createBadgerConn() *badger.DB {
+	db, err := badger.Open(badger.DefaultOptions(grv.RootPath + "/tmp/badger"))
+	if err != nil {
+		return nil
+	}
+
+	return db
 }
 
 func (grv *Goravel) BuildDSN() string {

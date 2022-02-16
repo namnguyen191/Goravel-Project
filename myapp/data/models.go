@@ -23,10 +23,18 @@ type Models struct {
 func New(databasePool *sql.DB) Models {
 	db = databasePool
 
-	if os.Getenv("DATABASE_TYPE") == "mysql" || os.Getenv("DATABASE_TYPE") == "mariadb" {
-		upper, _ = mysql.New(databasePool)
-	} else {
-		upper, _ = postgresql.New(databasePool)
+	switch os.Getenv("DATABASE_TYPE") {
+	case "mysql", "mariadb":
+		{
+			upper, _ = mysql.New(databasePool)
+
+		}
+	case "postgresql", "postgres":
+		{
+			upper, _ = postgresql.New(databasePool)
+		}
+	default:
+		// do nothing
 	}
 
 	return Models{

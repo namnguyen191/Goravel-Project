@@ -57,10 +57,10 @@ func (h *Handlers) decrypt(crypto string) (string, error) {
 		Key: []byte(h.App.EncryptionKey),
 	}
 
-	encrypted, err := enc.Decrypt(crypto)
+	decrypted, err := enc.Decrypt(crypto)
 	if err != nil {
 		return "", err
 	}
 
-	return encrypted, nil
+	return decrypted, nil
 }
