@@ -33,6 +33,8 @@ type TemplateData struct {
 	Port            string
 	ServerName      string
 	Secure          bool
+	Error           string
+	Flash           string
 }
 
 func (ren *Render) defaultData(td *TemplateData, r *http.Request) *TemplateData {
@@ -44,6 +46,9 @@ func (ren *Render) defaultData(td *TemplateData, r *http.Request) *TemplateData 
 	if ren.Session.Exists(r.Context(), "userID") {
 		td.IsAuthenticated = true
 	}
+
+	td.Error = ren.Session.PopString(r.Context(), "error")
+	td.Flash = ren.Session.PopString(r.Context(), "flash")
 
 	return td
 }

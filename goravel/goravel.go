@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/CloudyKit/jet/v6"
@@ -15,6 +16,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 	"github.com/joho/godotenv"
 	"github.com/namnguyen191/goravel/cache"
+	"github.com/namnguyen191/goravel/mailer"
 	"github.com/namnguyen191/goravel/render"
 	"github.com/namnguyen191/goravel/session"
 	"github.com/robfig/cron/v3"
@@ -43,6 +45,8 @@ type Goravel struct {
 	EncryptionKey string
 	Cache         cache.Cache
 	Scheduler     *cron.Cron
+	Mail          mailer.Mail
+	Server        Server
 }
 
 type config struct {
@@ -56,10 +60,17 @@ type config struct {
 	redis       redisConfig
 }
 
+type Server struct {
+	ServerName string
+	Port       string
+	Secure     bool
+	URL        string
+}
+
 func (grv *Goravel) New(rootPath string) error {
 	pathConfig := initPaths{
 		rootPath:    rootPath,
-		folderNames: []string{"handlers", "migrations", "views", "data", "public", "tmp", "logs", "middleware"},
+		folderNames: []string{"handlers", "migrations", "views", "mail", "data", "public", "tmp", "logs", "middleware"},
 	}
 
 	err := grv.Init(pathConfig)
@@ -124,6 +135,9 @@ func (grv *Goravel) New(rootPath string) error {
 	grv.Version = version
 	grv.RootPath = rootPath
 
+	// create mail
+	grv.Mail = grv.createMailer()
+
 	grv.Routes = grv.routes().(*chi.Mux)
 
 	grv.config = config{
@@ -146,6 +160,18 @@ func (grv *Goravel) New(rootPath string) error {
 			password: os.Getenv("REDIS_PASSWORD"),
 			prefix:   os.Getenv("REDIS_PREFIX"),
 		},
+	}
+
+	secure := true
+	if strings.ToLower(os.Getenv("SECURE")) == "false" {
+		secure = false
+	}
+
+	grv.Server = Server{
+		ServerName: os.Getenv("SEVER_NAME"),
+		Port:       os.Getenv("PORT"),
+		Secure:     secure,
+		URL:        os.Getenv("APP_URL"),
 	}
 
 	// create a Session
@@ -188,6 +214,8 @@ func (grv *Goravel) New(rootPath string) error {
 	}
 
 	grv.createRenderer()
+
+	go grv.Mail.ListenForMail()
 
 	return nil
 }
@@ -284,6 +312,28 @@ func (grv *Goravel) createRenderer() {
 	}
 
 	grv.Render = &myRenderer
+}
+
+func (grv *Goravel) createMailer() mailer.Mail {
+	port, _ := strconv.Atoi(os.Getenv("SMTP_PORT"))
+	m := mailer.Mail{
+		Domain:      os.Getenv("MAIL_DOMAIN"),
+		Templates:   grv.RootPath + "/mail",
+		Host:        os.Getenv("SMTP_HOST"),
+		Port:        port,
+		Username:    os.Getenv("SMTP_USERNAME"),
+		Password:    os.Getenv("SMTP_PASSWORD"),
+		Encryption:  os.Getenv("SMTP_ENCRYPTION"),
+		FromName:    os.Getenv("FROM_NAME"),
+		FromAddress: os.Getenv("FROM_ADDRESS"),
+		Jobs:        make(chan mailer.Message, 20),
+		Results:     make(chan mailer.Result, 20),
+		API:         os.Getenv("MAILER_API"),
+		APIKey:      os.Getenv("MAILER_KEY"),
+		APIUrl:      os.Getenv("MAILER_URL"),
+	}
+
+	return m
 }
 
 func (grv *Goravel) createClientRedisCache() *cache.RedisCache {

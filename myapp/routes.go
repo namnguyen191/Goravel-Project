@@ -6,11 +6,14 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/namnguyen191/goravel/mailer"
+
 	"github.com/go-chi/chi/v5"
 )
 
 func (a *application) routes() *chi.Mux {
 	// middlewares must come before any root
+	a.use(a.Middleware.CheckRemember)
 
 	// routes
 	a.get("/", a.Handlers.Home)
@@ -21,6 +24,10 @@ func (a *application) routes() *chi.Mux {
 	a.get("/users/login", a.Handlers.UserLogin)
 	a.get("/users/logout", a.Handlers.Logout)
 	a.post("/users/login", a.Handlers.PostUserLogin)
+	a.get("/users/forgot-password", a.Handlers.Forgot)
+	a.post("/users/forgot-password", a.Handlers.PostForgot)
+	a.get("/users/reset-password", a.Handlers.ResetPasswordForm)
+	a.post("/users/reset-password", a.Handlers.PostResetPassword)
 
 	a.get("/form", a.Handlers.Form)
 	a.post("/form", a.Handlers.SubmitForm)
@@ -36,6 +43,33 @@ func (a *application) routes() *chi.Mux {
 	a.post("/api/get-from-cache", a.Handlers.GetFromCache)
 	a.post("/api/delete-from-cache", a.Handlers.DeleteFromCache)
 	a.post("/api/empty-cache", a.Handlers.EmptyCache)
+
+	a.get("/test-mail", func(rw http.ResponseWriter, r *http.Request) {
+		msg := mailer.Message{
+			From:        "test@example.com",
+			To:          "you@there.com",
+			Subject:     "Test Subject - sent using func",
+			Template:    "test",
+			Attachments: nil,
+			Data:        nil,
+		}
+
+		// using chan
+		a.App.Mail.Jobs <- msg
+		res := <-a.App.Mail.Results
+		if res.Error != nil {
+			a.App.ErrorLog.Println(res.Error)
+		}
+
+		// using func
+		// err := a.App.Mail.SendSMTPMessage(msg)
+		// if err != nil {
+		// 	a.App.ErrorLog.Print(err)
+		// 	return
+		// }
+
+		// fmt.Fprint(rw, "Send mail!")
+	})
 
 	a.get("/create-user", func(rw http.ResponseWriter, r *http.Request) {
 		u := data.User{

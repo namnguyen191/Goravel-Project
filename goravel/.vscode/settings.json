@@ -1,6 +1,8 @@
 {
   "cSpell.words": [
+    "ainsleyclark",
     "asaskevich",
+    "bwmarrin",
     "dbname",
     "dgraph",
     "fatih",
@@ -8,9 +10,12 @@
     "goravel",
     "govalidator",
     "jackc",
+    "Jone",
     "pgconn",
     "postgresstore",
-    "sess"
+    "sess",
+    "vanng",
+    "xhit"
   ],
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "golang.go",

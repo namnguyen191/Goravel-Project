@@ -54,6 +54,14 @@ services:
       - postgres
     restart: unless-stopped
 
+  # For an easy test mailing server
+  mailhog:
+    image: 'mailhog/mailhog'
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+    restart: unless-stopped
+
 networks:
   postgres:
     driver: bridge
