@@ -19,11 +19,16 @@ func main() {
 		exitGracefully(err)
 	}
 
-	setup()
+	setup(arg1, arg2)
 
 	switch arg1 {
 	case "help":
 		showHelp()
+	case "new":
+		if arg2 == "" {
+			exitGracefully(errors.New("new requires an application name"))
+		}
+		doNew(arg2)
 	case "version":
 		color.Yellow("Goravel Version: " + version)
 	case "migrate":
@@ -71,8 +76,6 @@ func validateInput() (string, string, string, error) {
 
 	return arg1, arg2, arg3, nil
 }
-
-
 
 func exitGracefully(err error, msg ...string) {
 	message := ""

@@ -13,3 +13,7 @@ coverage:
 ## build_cli: builds the command line tool Goravel and copies it to myapp
 build_cli:
 	@go build -o ../myapp/goravel.exe ./cmd/cli
+
+## build: builds the command line tool to dist dir
+build:
+	@go build -o ./dist/goravel.exe ./cmd/cli
